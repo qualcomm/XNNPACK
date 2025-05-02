@@ -293,6 +293,7 @@ xnnpack_cc_library(
         "//:init_once",
         "//:microfnptr_h",
         "//:microkernel_hdrs",
+        "//:pack_lh",
     ],
 )
 

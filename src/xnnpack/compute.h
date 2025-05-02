@@ -300,6 +300,10 @@ struct gemm_context {
   size_t cn_stride;
   // Stride, in bytes, between each group (G) of C.
   size_t gc_stride;
+  // Pointer to additional workspace, if required.
+  void* workspace;
+  // Offset of the per-thread chunks from the start of the workspace pointer.
+  size_t workspace_offset;
   // Size, in bytes, of each element of C.
   uint32_t log2_csize;
   // Number of batch dimensions in A, B, and C.
@@ -316,10 +320,12 @@ struct gemm_context {
   size_t kr;
   // The `sr` size of the current GEMM microkernel.
   size_t sr;
-  // The inner dimension of the matrix product.
-  size_t kc;
   // The `mr_packed` size of the current GEMM microkernel.
   size_t mr_packed;
+  // The inner dimension of the matrix product.
+  size_t kc;
+  // The number of columns.
+  size_t nc;
   // GEMM microkernels.
   union {
     struct xnn_hmp_gemm_ukernel ukernel;
@@ -339,7 +345,9 @@ struct gemm_context {
     struct xnn_f16_scaleminmax_params f16;
     struct xnn_f32_minmax_params f32;
   } params;
-  xnn_pack_lh_offset_fn packed_lh_offset_fn;
+  const struct xnn_pack_lh_config* packed_lh_config;
+  // Whether to use the `dq_kernel` or not.
+  bool dynamic_quantization;
 };
 
 #ifndef __cplusplus
@@ -367,6 +375,11 @@ XNN_PRIVATE void xnn_compute_qp8gemm(
     const struct gemm_context context[restrict XNN_MIN_ELEMENTS(1)],
     size_t nr_block_start, size_t mr_block_start, size_t nr_block_size,
     size_t mr_block_size);
+
+XNN_PRIVATE void xnn_compute_inline_packed_qp8gemm(
+    const struct gemm_context context[restrict XNN_MIN_ELEMENTS(1)],
+    uint32_t thread_id, size_t mr_block_start, size_t mr_block_size);
+
 #if XNN_MAX_UARCH_TYPES > 1
 XNN_PRIVATE void xnn_compute_hmp_grouped_gemm(
     const struct gemm_context context[restrict XNN_MIN_ELEMENTS(1)],
@@ -392,6 +405,11 @@ XNN_PRIVATE void xnn_compute_hmp_qp8gemm(
     const struct gemm_context context[restrict XNN_MIN_ELEMENTS(1)],
     uint32_t uarch_index, size_t nr_block_start, size_t mr_block_start,
     size_t nr_block_size, size_t mr_block_size);
+
+XNN_PRIVATE void xnn_compute_hmp_inline_packed_qp8gemm(
+    const struct gemm_context context[restrict XNN_MIN_ELEMENTS(1)],
+    uint32_t uarch_index, size_t thread_id, size_t mr_block_start,
+    size_t mr_block_size);
 #endif  // XNN_MAX_UARCH_TYPES > 1
 #endif
 
@@ -500,6 +518,8 @@ struct igemm_context {
   size_t zero_size;
   // Value of mr in the microkernel.
   size_t mr;
+  // Value of nc in the weights.
+  size_t nc;
   // IGEMM microkernels.
   union {
     struct xnn_hmp_igemm_ukernel ukernel;
@@ -514,6 +534,21 @@ struct igemm_context {
     struct xnn_f16_scaleminmax_params f16;
     struct xnn_f32_minmax_params f32;
   } params;
+  // Additional params to compute the indirections on the fly.
+  const void* input;
+  size_t input_pixel_stride;
+  size_t input_height;
+  size_t input_width;
+  size_t output_height;
+  size_t output_width;
+  size_t kernel_height;
+  size_t kernel_width;
+  size_t stride_height;
+  size_t stride_width;
+  size_t dilation_height;
+  size_t dilation_width;
+  size_t input_padding_top;
+  size_t input_padding_left;
 };
 
 #ifndef __cplusplus
