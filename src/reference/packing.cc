@@ -33,6 +33,7 @@
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi8cxp_qsi8cx_neon.h"
+#include "kai/ukernels/matmul/pack/kai_rhs_imatmul_pack_kxn_x32p2vlx1b_x32_x32_sme.h"
 #endif  // XNN_ENABLE_KLEIDIAI
 
 // Templates ignore __attribute__((aligned(x))) when deducing types, so we need
@@ -2068,6 +2069,45 @@ void transpose_weights(const float* in, float* out, size_t height,
     for (size_t j = 0; j < width; ++j) {
       out[j * height + i] = in[i * width + j];
     }
+  }
+}
+
+void xnn_pack_kai_f32_conv_goki_w_sme(
+    size_t g, size_t nc, size_t ks, size_t kc,
+    size_t nr, size_t kr, size_t sr, const float* k,
+    const float* b, const void* scale,
+    float* packed_weights, size_t extra_bytes,
+    const void* params) {
+  assert(g != 0);
+  assert(nr >= sr);
+  assert(k != nullptr);
+  assert(packed_weights != nullptr);
+
+  float* tmp_bias = NULL;
+
+  if (b == NULL) {
+    tmp_bias = (float*) calloc(g * nc, sizeof(float));
+    b = tmp_bias;
+  }
+
+  float* tmp_data = (float*) malloc(nc * ks * kc * sizeof(float));
+  const size_t rhs_row_stride = nc * sizeof(float);
+  const size_t packed_rhs_size = kai_get_rhs_packed_size_rhs_imatmul_pack_kxn_x32p2vlx1b_x32_x32_sme(nc, ks, kc);
+
+  for (size_t g_idx = 0; g_idx < g; ++g_idx) {
+      transpose_weights(k, tmp_data, nc, ks * kc);
+      kai_run_rhs_imatmul_pack_kxn_x32p2vlx1b_x32_x32_sme(
+        nc, ks, kc, rhs_row_stride, tmp_data, b, packed_weights);
+
+      k += nc * ks * kc;
+      b += nc;
+      packed_weights = (float*)packed_weights + packed_rhs_size;
+  }
+
+  free(tmp_data);
+
+  if (tmp_bias != NULL) {
+      free(tmp_bias);
   }
 }
 

@@ -63,6 +63,11 @@ extern "C" {
       size_t a_offset,                                     \
       const float* zero,                                   \
       const union xnn_f32_minmax_params params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+	  
+size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_mr(void);
+size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_nr(void);
+
+DECLARE_F32_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme)
 
 DECLARE_F32_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_f32_igemm_minmax_ukernel_1x8__neon_lane_ld64)
 DECLARE_F32_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_f32_igemm_minmax_ukernel_4x2__neon_lane_ld64)

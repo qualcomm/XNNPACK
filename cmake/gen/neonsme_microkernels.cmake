@@ -9,7 +9,9 @@
 #   Generator: tools/update-microkernels.py
 
 
-SET(PROD_NEONSME_MICROKERNEL_SRCS)
+SET(PROD_NEONSME_MICROKERNEL_SRCS
+  src/pf32-gemm/pf32-gemm-32x32-minmax-neonsme.c
+  src/pf32-gemm/pf32-igemm-32x32-minmax-neonsme.c)
 
 SET(NON_PROD_NEONSME_MICROKERNEL_SRCS)
 

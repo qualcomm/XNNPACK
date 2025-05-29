@@ -1704,6 +1704,7 @@ enum xnn_status create_convolution2d_nhwc_f32(
     xnn_weights_cache_t weights_cache,
     xnn_operator_t* convolution_op_out)
 {
+  struct xnn_gemm_config* gemm_config_temp;
   if (isnan(output_min)) {
     xnn_log_error(
       "failed to create %s operator with NaN output lower bound: lower bound must be non-NaN",
@@ -1758,6 +1759,12 @@ enum xnn_status create_convolution2d_nhwc_f32(
   if XNN_LIKELY(vmulcaddc_config->init.f32 != NULL) {
     vmulcaddc_config->init.f32(&vmulcaddc_params, output_min, output_max);
   }
+  if(gemm_config->pack_igemm_goki == NULL)
+  {
+	  gemm_config_temp = gemm_config;
+	  gemm_config_temp->pack_igemm_goki = (xnn_pack_conv_goki_w_fn)xnn_pack_f32_conv_goki_w;
+	  gemm_config = gemm_config_temp;
+  }
 
   return create_convolution2d_nhwc(
     input_padding_top, input_padding_right, input_padding_bottom, input_padding_left,
@@ -1774,7 +1781,7 @@ enum xnn_status create_convolution2d_nhwc_f32(
     (xnn_pack_dwconv_hwg_w_fn) xnn_pack_f32_dwconv_hwg_w,
     (xnn_pack_dwconv_ghw_w_fn) xnn_pack_f32_dwconv_ghw_w,
     (xnn_pack_conv_kgo_w_fn) xnn_pack_f32_conv_kgo_w,
-    (xnn_pack_conv_goki_w_fn) xnn_pack_f32_conv_goki_w,
+    (xnn_pack_conv_goki_w_fn) gemm_config->pack_igemm_goki,
     /*packing_params=*/NULL,
     /*input_padding_byte=*/0,
     /*packed_weights_padding_byte=*/0,
