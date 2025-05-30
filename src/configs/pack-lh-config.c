@@ -75,15 +75,20 @@ const struct xnn_pack_lh_config* xnn_init_x16_pack_lh_config() {
 
 static void init_x8_pack_lh_config(void) {
 #if XNN_ARCH_ARM64 && XNN_ENABLE_KLEIDIAI
-    #if XNN_ENABLE_ARM_SME2
+    #if XNN_ENABLE_ARM_SME2 || XNN_ENABLE_ARM_SME
       const struct xnn_hardware_config* hardware_config = xnn_init_hardware_config();
       assert(hardware_config != NULL);
+      if (hardware_config->use_arm_sme) {
+        x8_pack_lh_config.ukernel = (xnn_pack_lh_ukernel_fn) xnn_x8_pack_lh_ukernel__neonsme;
+        x8_pack_lh_config.size_fn = (xnn_pack_lh_size_fn) xnn_x8_pack_lh_size__neonsme;
+        x8_pack_lh_config.offset_fn = (xnn_pack_lh_offset_fn) xnn_x8_pack_lh_offset__neonsme;
+      }
       if (hardware_config->use_arm_sme2) {
         x8_pack_lh_config.ukernel = (xnn_pack_lh_ukernel_fn) xnn_x8_pack_lh_ukernel__neonsme2;
         x8_pack_lh_config.size_fn = (xnn_pack_lh_size_fn) xnn_x8_pack_lh_size__neonsme2;
         x8_pack_lh_config.offset_fn = (xnn_pack_lh_offset_fn) xnn_x8_pack_lh_offset__neonsme2;
       }
-    #endif  // XNN_ENABLE_ARM_SME2
+    #endif  // XNN_ENABLE_ARM_SME2 || XNN_ENABLE_ARM_SME
 #endif  // XNN_ARCH_ARM64 && XNN_ENABLE_KLEIDIAI
 }
 

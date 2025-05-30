@@ -64,8 +64,8 @@ extern "C" {
       const float* zero,                                   \
       const union xnn_f32_minmax_params params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
 	  
-size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_mr(void);
-size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_nr(void);
+XNN_INTERNAL size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_mr(void);
+XNN_INTERNAL size_t xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme_get_nr(void);
 
 DECLARE_F32_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_pf32_igemm_minmax_fp32_ukernel_32x32__neonsme)
 
@@ -1182,6 +1182,12 @@ DECLARE_QD8_F32_QC8W_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_qd8_f32_qc8w_igemm_minmax
       size_t a_offset,                                          \
       const int8_t* zero,                                       \
       const union xnn_qs8_qc8w_conv_minmax_params params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+	  
+XNN_INTERNAL size_t xnn_qs8_qc8w_igemm_minmax_fp32_ukernel_32x32__neonsme_get_mr(void);
+XNN_INTERNAL size_t xnn_qs8_qc8w_igemm_minmax_fp32_ukernel_32x32__neonsme_get_nr(void);
+
+DECLARE_QS8_QC8W_IGEMM_MINMAX_UKERNEL_FUNCTION(
+    xnn_qs8_qc8w_igemm_minmax_fp32_ukernel_32x32__neonsme)
 
 DECLARE_QS8_QC8W_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_qs8_qc8w_igemm_minmax_fp32_ukernel_1x8__neon_mlal_lane)
 DECLARE_QS8_QC8W_IGEMM_MINMAX_UKERNEL_FUNCTION(xnn_qs8_qc8w_igemm_minmax_fp32_ukernel_1x8__neon_mlal_lane_prfm)

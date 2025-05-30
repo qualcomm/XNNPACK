@@ -37,6 +37,13 @@ void xnn_pack_kai_f32_conv_goki_w_sme(
     const float* b, const void* scale,
     float* packed_weights, size_t extra_bytes,
     const void* params);
+	
+void xnn_pack_kai_qs8_conv_goki_w_sme(
+    size_t g, size_t nc, size_t ks, size_t kc,
+    size_t nr, size_t kr, size_t sr, const int8_t* k,
+    const int32_t* b, const float* scale,
+    void* packed_weights, size_t extra_bytes,
+    const struct xnn_qs8_packing_params* params);
 
 typedef void (*xnn_pack_f32_gemm_fn)(
   size_t g,
