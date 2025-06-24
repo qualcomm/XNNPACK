@@ -93,7 +93,7 @@ void Configure(benchmark::internal::Benchmark* benchmark, void (setup_method)(Be
 
 #define BENCHMARK_GEMM_BASE(gemm_fn, blockwise) \
   BENCHMARK_CASE(gemm_fn, mobilenet_v1, "MobileNet v1", MobileNetV1GemmArguments, blockwise); \
-  BENCHMARK_CASE(gemm_fn, mobilenet_v2, "MobileNet v2", MobileNetV2GemmArguments, blockwise); \
+  /*BENCHMARK_CASE(gemm_fn, mobilenet_v2, "MobileNet v2", MobileNetV2GemmArguments, blockwise); \
   BENCHMARK_CASE(gemm_fn, mobilenet_v3_small, "MobileNet v3 Small", MobileNetV3SmallGemmArguments, blockwise); \
   BENCHMARK_CASE(gemm_fn, mobilenet_v3_large, "MobileNet v3 Large", MobileNetV3LargeGemmArguments, blockwise); \
   BENCHMARK_CASE(gemm_fn, shufflenet_v1_g1, "ShuffleNet v1 (1 group)", ShuffleNetV1G1GemmArguments, blockwise); \
@@ -114,7 +114,7 @@ void Configure(benchmark::internal::Benchmark* benchmark, void (setup_method)(Be
   BENCHMARK_CASE(gemm_fn, srcnn915, "SRCNN (9-1-5)", SRCNN915GemmArguments, blockwise); \
   BENCHMARK_CASE(gemm_fn, srcnn935, "SRCNN (9-3-5)", SRCNN935GemmArguments, blockwise); \
   BENCHMARK_CASE(gemm_fn, llm, "LLM", LLMGemmArguments, blockwise);
-
+*/
 // Removed due to OOM SEGFAULT on 32 bit ARM.
 //  BENCHMARK_CAPTURE(gemm_fn, srcnn955, "SRCNN (9-5-5)")->Apply(SRCNN955GemmArguments)->UseRealTime();
 
@@ -293,14 +293,14 @@ static void MobileNetV1GemmArguments(BenchmarkWrapper* b) {
   /*           M        N          K    */
   b->Args({112 * 112,   32,    3 * 3 * 3});
   b->Args({112 * 112,   64,   32 * 1 * 1});
-  b->Args({ 56 *  56,  128,   64 * 1 * 1});
+  /*b->Args({ 56 *  56,  128,   64 * 1 * 1});
   b->Args({ 56 *  56,  128,  128 * 1 * 1});
   b->Args({ 28 *  28,  256,  128 * 1 * 1});
   b->Args({ 28 *  28,  256,  256 * 1 * 1});
   b->Args({ 14 *  14,  512,  256 * 1 * 1});
   b->Args({ 14 *  14,  512,  512 * 1 * 1});
   b->Args({  7 *   7, 1024,  512 * 1 * 1});
-  b->Args({  7 *   7, 1024, 1024 * 1 * 1});
+  b->Args({  112 * 112, 1024, 1024 * 1 * 1})*/;
 }
 
 static void MobileNetV2GemmArguments(BenchmarkWrapper* b) {

@@ -18,7 +18,7 @@
 #include "xnnpack/pack.h"
 #include "xnnpack/packw.h"
 
-
+#if 0
 #if XNN_ENABLE_ARM_SME2 && XNN_ARCH_ARM64
   #if XNN_ENABLE_KLEIDIAI
   static void pf32_gemm_minmax_ukernel_1x32__neonsme2(benchmark::State& state, const char* net) {
@@ -49,6 +49,22 @@
   #endif  // XNN_ENABLE_KLEIDIAI
 #endif  // XNN_ENABLE_ARM_SME2 && XNN_ARCH_ARM64
 
+#endif
+
+#if XNN_ENABLE_KLEIDIAI
+static void pf32_gemm_minmax_ukernel_32x32__neonsme1(benchmark::State& state, const char* net) {
+  GEMMBenchmark(state,
+    xnn_pf32_gemm_minmax_ukernel_32x32__neonsme,
+    xnn_init_f32_minmax_scalar_params,
+    xnn_pack_kai_f32_weights_and_biases,
+    xnn_packed_stride_kai_f32_weights_and_biases,
+    /*mr=*/32, /*nr=*/32, /*kr=*/1, /*sr=*/1,
+    /*mr_packed=*/32,
+    /*isa_check=*/benchmark::utils::CheckNEONSME);
+}
+
+BENCHMARK_GEMM(pf32_gemm_minmax_ukernel_32x32__neonsme1)
+#endif  // XNN_ENABLE_KLEIDIAI
 
 #ifndef XNNPACK_BENCHMARK_NO_MAIN
 XNN_BENCHMARK_MAIN();
