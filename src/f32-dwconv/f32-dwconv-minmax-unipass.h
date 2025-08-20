@@ -43,6 +43,7 @@ XNN_DWCONV_UNIPASS(xnn_arch_arm_neon_fma, xnn_f32_dwconv_minmax_ukernel_9p4c__ne
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon, xnn_f32_dwconv_minmax_ukernel_9p8c__neon, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon, xnn_f32_dwconv_minmax_ukernel_9p8c__neon_acc2, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon_fma, xnn_f32_dwconv_minmax_ukernel_9p8c__neonfma, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
+XNN_DWCONV_UNIPASS(xnn_arch_arm_neon_fma, xnn_f32_dwconv_minmax_ukernel_9p8c__neonfma_sme, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon_fma, xnn_f32_dwconv_minmax_ukernel_9p8c__neonfma_acc2, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon, xnn_f32_dwconv_minmax_ukernel_9p16c__neon, 16, false, 16, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
 XNN_DWCONV_UNIPASS(xnn_arch_arm_neon, xnn_f32_dwconv_minmax_ukernel_9p16c__neon_acc2, 16, false, 16, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)

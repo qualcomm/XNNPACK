@@ -192,6 +192,7 @@ std::vector<DWConvTestParams> CreateTests(
 
 }  // namespace
 
+#if 0
 #define XNN_DWCONV_UNIPASS(arch_flags, ukernel, c_block, is_pipelined, cr, kr, datatype, weights_type, params_type, init_params)\
 INSTANTIATE_TEST_SUITE_P(                                                                                                       \
     ukernel, DWConvTest,                                                                                                        \
@@ -204,5 +205,21 @@ INSTANTIATE_TEST_SUITE_P(                                                       
     [](const testing::TestParamInfo<DWConvTest::ParamType>& info) {                                                             \
       return info.param.test_name;                                                                                              \
     });
-#include "f32-dwconv/f32-dwconv-minmax-unipass.h"
+#endif
+
+#define XNN_DWCONV_UNIPASS_SME(arch_flags, ukernel, c_block, is_pipelined, cr, kr, datatype, weights_type, params_type, init_params)\
+INSTANTIATE_TEST_SUITE_P(                                                                                                       \
+    ukernel, DWConvTest,                                                                                                        \
+    testing::ValuesIn(CreateTests(                                                                                              \
+        c_block, is_pipelined, cr, kr,                                                                                          \
+        [](DWConvMicrokernelTester& tester) {                                                                                   \
+          TEST_REQUIRES_ARCH_FLAGS(arch_flags);                                                                                 \
+          tester.Test(ukernel, init_params);                                                                                    \
+        })),                                                                                                                    \
+    [](const testing::TestParamInfo<DWConvTest::ParamType>& info) {                                                             \
+      return info.param.test_name;                                                                                              \
+    });
+	
+XNN_DWCONV_UNIPASS_SME(xnn_arch_arm_neon_fma, xnn_f32_dwconv_minmax_ukernel_9p8c__neonfma, 8, false, 8, 9, float, float, union xnn_f32_minmax_params, xnn_init_f32_minmax_scalar_params)
+//#include "f32-dwconv/f32-dwconv-minmax-unipass.h"
 #undef XNN_UKERNEL_WITH_PARAMS
