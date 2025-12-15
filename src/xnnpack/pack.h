@@ -31,6 +31,13 @@ struct xnn_qs8_packing_params {
   int8_t input_zero_point;
 };
 
+void xnn_pack_kai_pf32_conv_goki_w_sme(
+    size_t g, size_t nc, size_t ks, size_t kc,
+    size_t nr, size_t kr, size_t sr, const float* k,
+    const float* b, const void* scale,
+    float* packed_weights, size_t extra_bytes,
+    const void* params);
+
 typedef void (*xnn_pack_f32_gemm_fn)(size_t g, size_t nc, size_t kc, size_t nr,
                                      size_t kr, size_t sr, const float* kernel,
                                      const float* bias, const void* scale,
@@ -445,14 +452,14 @@ size_t xnn_packed_stride_kai_f32_weights_and_biases(
     size_t unused_k_stride,                     //
     size_t extra_bytes);
 
-XNN_INTERNAL size_t xnn_packed_stride_kai_qs8_qc8w_weights_and_biases_sme2(
+XNN_INTERNAL size_t xnn_packed_stride_kai_qs8_qc8w_weights_and_biases_sme(
     const struct xnn_gemm_config* gemm_config,  //
     size_t k,                                   //
     size_t unused_block_size,                   //
     size_t k_stride,                            //
     size_t extra_bytes);
 
-void xnn_pack_kai_qs8_qc8w_weights_and_biases_sme2(
+void xnn_pack_kai_qs8_qc8w_weights_and_biases_sme(
     uint32_t flags, const struct xnn_gemm_config* gemm_config,
     size_t input_channels, size_t output_channels, size_t groups,
     size_t unused_block_size, size_t k_stride, const void* accumulator_init,
@@ -526,7 +533,7 @@ XNN_INTERNAL size_t xnn_packed_stride_kai_qb4_weights_and_biases(
     size_t k_stride,                            //
     size_t extra_bytes);
 
-XNN_INTERNAL void xnn_pack_kai_qs8_conv_goki_w_sme2(
+XNN_INTERNAL void xnn_pack_kai_qs8_conv_goki_w_sme(
     size_t g,              //
     size_t nc,             //
     size_t ks,             //

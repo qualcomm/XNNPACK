@@ -5,10 +5,8 @@
 // LICENSE file in the root directory of this source tree.
 
 
-// arch_flags, igemm_ukernel, igemm_size_fn, igemm_packed_offset_fn
+// arch_flags, ukernel, unroll
 
 #if XNN_ENABLE_KLEIDIAI
-XNN_UKERNEL(xnn_arch_arm_sme, xnn_x8_pack_lh_ukernel__igemm_neonsme,
-            xnn_x8_pack_lh_size__igemm_neonsme,
-            xnn_x8_pack_lh_offset__igemm_neonsme)
+XNN_UKERNEL(xnn_arch_arm_sme, xnn_x32_pack_lh_ukernel__igemm_neonsme, xnn_x32_pack_lh_size__igemm_neonsme, xnn_x32_pack_lh_offset__igemm_neonsme)
 #endif  // XNN_ENABLE_KLEIDIAI
