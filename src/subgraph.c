@@ -3851,7 +3851,8 @@ enum xnn_status xnn_subgraph_optimize_packed_lhs(xnn_subgraph_t subgraph,
           case xnn_datatype_fp32:
             if (input_datatype == output_datatype &&
                 kernel_datatype == xnn_datatype_fp32) {
-              if ((gemm_config = xnn_init_pf32_gemm_config())) {
+              if ((gemm_config = xnn_init_pf32_gemm_config()) &&
+            !(optimization_flags & XNN_FLAG_DISABLE_SME)) {
                 assumed_datatype = xnn_datatype_pfp32;
               }
             }
@@ -3859,7 +3860,8 @@ enum xnn_status xnn_subgraph_optimize_packed_lhs(xnn_subgraph_t subgraph,
           case xnn_datatype_qint8:
             if (input_datatype == output_datatype &&
                 kernel_datatype == xnn_datatype_qcint8) {
-              if ((gemm_config = xnn_init_pqs8_qc8w_gemm_config())) {
+              if ((gemm_config = xnn_init_pqs8_qc8w_gemm_config()) && 
+            !(optimization_flags & XNN_FLAG_DISABLE_SME)) {
                 assumed_datatype = xnn_datatype_pqint8;
               }
             }
@@ -4000,7 +4002,8 @@ enum xnn_status xnn_subgraph_optimize_packed_lhs(xnn_subgraph_t subgraph,
              kernel_datatype == xnn_datatype_qint8) &&
             output_datatype == xnn_datatype_qint8 &&
             xnn_init_pqs8_qc8w_gemm_config() != NULL &&
-            !(optimization_flags & XNN_FLAG_NO_INLINED_LHS_PACKING)) {
+            !(optimization_flags & XNN_FLAG_NO_INLINED_LHS_PACKING) && 
+            !(optimization_flags & XNN_FLAG_DISABLE_SME)) {
           // Note that there is currently no option to not use inlining for this
           // iGEMM kernel.
           xnn_log_debug("Setting assumed_datatype=%s for node #%u (%s).",
@@ -4013,7 +4016,8 @@ enum xnn_status xnn_subgraph_optimize_packed_lhs(xnn_subgraph_t subgraph,
         if (input_datatype == xnn_datatype_fp32 &&
             kernel_datatype == xnn_datatype_fp32 &&
             output_datatype == xnn_datatype_fp32) {
-              if ((xnn_init_pf32_gemm_config() != NULL)) {
+              if ((xnn_init_pf32_gemm_config() != NULL) && 
+                  !(optimization_flags & XNN_FLAG_DISABLE_SME)) {
                 node->packed_input_datatype = xnn_datatype_pfp32;
                 if(node->type == xnn_node_type_convolution_2d) {
                   node->flags |= XNN_FLAG_INLINE_LHS_PACKING;

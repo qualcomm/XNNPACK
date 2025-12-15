@@ -53,6 +53,9 @@
 /// because of tiling.
 #define XNN_FLAG_NO_INLINED_LHS_PACKING 0x00004000
 
+// Runtime option to disable SME. 
+#define XNN_FLAG_DISABLE_SME 0x00000001
+
 /// Do not attempt to elide subgraph nodes with this flag set.
 #define XNN_NODE_FLAG_DONT_ELIDE 0x00800000
 #define XNN_NODE_FLAG_REQUIRES_ROW_SUM 0x01000000
