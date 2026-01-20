@@ -2369,14 +2369,29 @@ static void init_qp8_f32_qb4w_gemm_config(void) {
         xnn_init_hardware_config();
     assert(hardware_config != NULL);
    (void) hardware_config;  // May be unused.
-    if (XNN_ENABLE_ARM_SME && (hardware_config->arch_flags & xnn_arch_arm_sme)) {
+    if (XNN_ENABLE_ARM_SME2 && (hardware_config->arch_flags & xnn_arch_arm_sme2)) {
+      #if XNN_ENABLE_ARM_SME2
+        const size_t mr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr();
+        const size_t nr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr();
+        qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(1)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2);
+        qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(mr)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2);
+        qp8_f32_qb4w_gemm_config.init.f32_qb4w = xnn_init_f32_qb4w_minmax_scalar_params;
+        qp8_f32_qc4w_gemm_config.pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
+        qp8_f32_qb4w_gemm_config.packed_stride_weights_and_biases = xnn_packed_stride_kai_qb4_weights_and_biases;
+        qp8_f32_qb4w_gemm_config.mr = mr;
+        qp8_f32_qb4w_gemm_config.nr = nr;
+        qp8_f32_qb4w_gemm_config.log2_kr = 2;
+        qp8_f32_qb4w_gemm_config.planes = 2;
+        qp8_f32_qb4w_gemm_config.mr_packed = mr;
+      #endif // XNN_ENABLE_ARM_SME2
+    } else if (XNN_ENABLE_ARM_SME && (hardware_config->arch_flags & xnn_arch_arm_sme)) {
       #if XNN_ENABLE_ARM_SME
       const size_t mr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr();
       const size_t nr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr();
       qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(1)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme);
       qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(mr)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme);
       qp8_f32_qb4w_gemm_config.init.f32_qb4w = xnn_init_f32_qb4w_minmax_scalar_params;
-      qp8_f32_qc4w_gemm_config.pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases;
+      qp8_f32_qc4w_gemm_config.pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
       qp8_f32_qb4w_gemm_config.packed_stride_weights_and_biases = xnn_packed_stride_kai_qb4_weights_and_biases;
       qp8_f32_qb4w_gemm_config.mr = mr;
       qp8_f32_qb4w_gemm_config.nr = nr;

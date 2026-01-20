@@ -60,7 +60,7 @@ OPTION(XNNPACK_ENABLE_SPARSE "Build XNNPACK with graph rewriting for sparse infe
 OPTION(XNNPACK_BUILD_LIBRARY "Build XNNPACK library" ON)
 OPTION(XNNPACK_BUILD_TESTS "Build XNNPACK unit tests" ON)
 OPTION(XNNPACK_BUILD_ALL_MICROKERNELS "Builds all XNNPACK Microkernels" ON)
-OPTION(XNNPACK_BUILD_BENCHMARKS "Build XNNPACK benchmarks" ON)
+OPTION(XNNPACK_BUILD_BENCHMARKS "Build XNNPACK benchmarks" OFF)
 OPTION(XNNPACK_BUILD_WITH_LIBM "Build XNNPACK with libm, can turn off on Windows to avoid mutiple math functions issue." ON)
 OPTION(XNNPACK_USE_SYSTEM_LIBS "Use system-provided dependency libraries" OFF)
 OPTION(USE_GNU_SOURCE "Use _GNU_SOURCE macro" OFF)

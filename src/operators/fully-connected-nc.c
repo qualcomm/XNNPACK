@@ -980,7 +980,7 @@ enum xnn_status xnn_create_fully_connected_nc_qp8_f32_qb4w(
 
   struct xnn_gemm_config* gemm_config =
       xnn_init_qp8_f32_qb4w_gemm_config();
-  gemm_config->pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases;
+  gemm_config->pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
   if (gemm_config == NULL) {
     xnn_log_error(
         "failed to create %s operator: unsupported hardware configuration",

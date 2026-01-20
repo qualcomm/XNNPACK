@@ -35,6 +35,8 @@
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon.h"
+#include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon.h"
+#include "kai/ukernels/matmul/pack/kai_rhs_pack_kxn_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi8cxp_qsi8cx_neon.h"
 #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_x16p2vlx2b_x16_x16_sme.h"
 #include "src/xnnpack/allocator.h"
@@ -2478,6 +2480,77 @@ void xnn_pack_kai_qb4_weights_and_biases(
     kai_params.rhs_zero_point = xnn_params->kernel_zero_point;
     kai_params.scale_dt = kai_datatype::kai_dt_bf16;
     kai_run_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0(
+        groups, output_channels, input_channels, nr, kr, sr,
+        /*bl=*/block_size,
+        /*rhs=*/reinterpret_cast<const uint8_t*>(weights), rhs_stride,
+        /*bias=*/reinterpret_cast<const float*>(extra_data0),
+        /*scale=*/reinterpret_cast<const uint16_t*>(extra_data1),
+        /*scale_stride=*/blocks_per_row * sizeof(uint16_t),
+        /*rhs_packed*/ packed_weights_ptr,
+        /*extra_bytes=*/0, &kai_params);
+  }
+
+  // init bias
+  size_t packed_k_stride = round_up_po2(input_channels, kr * sr);
+  if (1 < planes) {
+    input_channels = round_up_po2(input_channels, planes);
+    packed_k_stride = round_up_po2(input_channels, kr * sr * planes);
+    packed_k_stride = round_up_po2(packed_k_stride, 2) >> 1;
+  }
+  const size_t weights_stride = xnn_packed_stride_kai_qb4_weights_and_biases(
+      gemm_config, input_channels, block_size, packed_k_stride, 0);
+  if (accumulator_init != NULL) {
+    void* weights_start =
+        (void*)((uintptr_t)packed_weights_ptr +
+                nr * (sizeof(float) + (block_size * sizeof(int8_t) / 2)));
+    weights_start = (void*)((uintptr_t)packed_weights_ptr +
+                            nr * (weights_stride - sizeof(float)));
+    xnn_init_qs8_qc8w_scale_fp32_params(
+        output_channels, nr, nr * weights_stride,
+        (const float*)accumulator_init, weights_start);
+  }
+}
+
+void xnn_pack_kai_qb4_weights_and_biases_neon(
+    uint32_t flags, const struct xnn_gemm_config* gemm_config,
+    size_t input_channels, size_t output_channels, size_t groups,
+    size_t block_size, size_t k_stride, const void* accumulator_init,
+    const void* weights, xnn_init_scale_params_fn init_extra_data0_fn,
+    const void* extra_data0, size_t extra_data0_element_size,
+    xnn_init_scale_params_fn init_extra_data1_fn, const void* extra_data1,
+    size_t extra_data1_element_size, void* packed_weights_ptr,
+    const void* params) {
+  const uint32_t nr = gemm_config->nr;
+  const uint32_t kr = UINT32_C(1) << gemm_config->log2_kr;
+  const uint32_t sr = UINT32_C(1) << gemm_config->log2_sr;
+  const uint32_t planes = gemm_config->planes;
+  const struct xnn_qs8_qc4w_packing_params* xnn_params =
+      reinterpret_cast<const struct xnn_qs8_qc4w_packing_params*>(params);
+
+  size_t rhs_stride = (k_stride + 1) / 2;
+  size_t blocks_per_row = (input_channels + block_size - 1) / block_size;
+
+  if (flags & XNN_FLAG_TRANSPOSE_WEIGHTS) {
+    struct kai_rhs_pack_kxn_qsi4c32p_qsu4c32s1s0_params kai_params;
+    kai_params.lhs_zero_point = xnn_params->input_zero_point;
+    kai_params.rhs_zero_point = xnn_params->kernel_zero_point;
+    kai_params.scale_dt = kai_datatype::kai_dt_bf16;
+    kai_run_rhs_pack_kxn_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon(
+        groups, output_channels, input_channels, nr, kr, sr,
+        /*bl=*/block_size,
+        /*rhs=*/reinterpret_cast<const uint8_t*>(weights), rhs_stride,
+        /*bias=*/reinterpret_cast<const float*>(extra_data0),
+        /*scale=*/reinterpret_cast<const uint16_t*>(extra_data1),
+        /*scale_stride=*/blocks_per_row * sizeof(uint16_t),
+        /*rhs_packed*/ packed_weights_ptr,
+        /*extra_bytes=*/0, &kai_params);
+  } else {
+    // Repack the packing params.
+    struct kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0_params kai_params;
+    kai_params.lhs_zero_point = xnn_params->input_zero_point;
+    kai_params.rhs_zero_point = xnn_params->kernel_zero_point;
+    kai_params.scale_dt = kai_datatype::kai_dt_bf16;
+    kai_run_rhs_pack_nxk_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon(
         groups, output_channels, input_channels, nr, kr, sr,
         /*bl=*/block_size,
         /*rhs=*/reinterpret_cast<const uint8_t*>(weights), rhs_stride,
