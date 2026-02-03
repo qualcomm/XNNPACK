@@ -1,0 +1,448 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 64a9d9cb3d..86a8001e62 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -60,7 +60,7 @@ OPTION(XNNPACK_ENABLE_SPARSE "Build XNNPACK with graph rewriting for sparse infe
+ OPTION(XNNPACK_BUILD_LIBRARY "Build XNNPACK library" ON)
+ OPTION(XNNPACK_BUILD_TESTS "Build XNNPACK unit tests" ON)
+ OPTION(XNNPACK_BUILD_ALL_MICROKERNELS "Builds all XNNPACK Microkernels" ON)
+-OPTION(XNNPACK_BUILD_BENCHMARKS "Build XNNPACK benchmarks" ON)
++OPTION(XNNPACK_BUILD_BENCHMARKS "Build XNNPACK benchmarks" OFF)
+ OPTION(XNNPACK_BUILD_WITH_LIBM "Build XNNPACK with libm, can turn off on Windows to avoid mutiple math functions issue." ON)
+ OPTION(XNNPACK_USE_SYSTEM_LIBS "Use system-provided dependency libraries" OFF)
+ OPTION(USE_GNU_SOURCE "Use _GNU_SOURCE macro" OFF)
+diff --git a/cmake/DownloadKleidiAI.cmake b/cmake/DownloadKleidiAI.cmake
+index d67b464f0f..bf70e38f53 100644
+--- a/cmake/DownloadKleidiAI.cmake
++++ b/cmake/DownloadKleidiAI.cmake
+@@ -18,8 +18,8 @@ ENDIF()
+ # LINT.IfChange
+ INCLUDE(ExternalProject)
+ ExternalProject_Add(kleidiai
+-  URL https://github.com/ARM-software/kleidiai/archive/45bf06030727ce049793ce6749e943cc2ea896fe.zip
+-  URL_HASH SHA256=919683ceeedd6dd9db26c341eef448f9096616dfc4e9270e0209e481921e78e4
++  URL https://github.com/qualcomm/kleidiai/archive/d82d724695e3bed0bb2d6fdb275cca0a387ae626.zip
++  URL_HASH SHA256=400a43e9c55e2a16692184d2f230bae5bbf38f2ea3cc0a662fd6b904c3ab1390
+   SOURCE_DIR "${CMAKE_BINARY_DIR}/kleidiai-source"
+   BINARY_DIR "${CMAKE_BINARY_DIR}/kleidiai"
+   CONFIGURE_COMMAND ""
+diff --git a/cmake/gen/neonsme2_microkernels.cmake b/cmake/gen/neonsme2_microkernels.cmake
+index 4b5414b2d8..71c3d59dbd 100644
+--- a/cmake/gen/neonsme2_microkernels.cmake
++++ b/cmake/gen/neonsme2_microkernels.cmake
+@@ -21,6 +21,8 @@ SET(PROD_NEONSME2_MICROKERNEL_SRCS
+   src/qp8-f32-qc4w-gemm/qp8-f32-qc4w-gemm-minmax-16x64c4-neonsme2.c
+   src/qp8-f32-qc8w-gemm/qp8-f32-qc8w-gemm-minmax-1x64c4-neonsme2.c
+   src/qp8-f32-qc8w-gemm/qp8-f32-qc8w-gemm-minmax-16x64c4-neonsme2.c
++  src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme2.c
++  src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme2.c 
+   src/x8-pack-lh/x8-packlh-igemm-neonsme2.c
+   src/x8-pack-lh/x8-packlh-neonsme2.c
+   src/x16-pack-lh/x16-packlh-neonsme2.c)
+diff --git a/cmake/gen/neonsme_microkernels.cmake b/cmake/gen/neonsme_microkernels.cmake
+index 1057a1bf07..ae7ae70fc0 100644
+--- a/cmake/gen/neonsme_microkernels.cmake
++++ b/cmake/gen/neonsme_microkernels.cmake
+@@ -12,6 +12,8 @@
+ SET(PROD_NEONSME_MICROKERNEL_SRCS
+   src/pf32-gemm/pf32-gemm-1x32-minmax-neonsme.c
+   src/pf32-gemm/pf32-gemm-32x32-minmax-neonsme.c
++  src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme.c
++  src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme.c   
+   src/x32-pack-lh/x32-packlh-neonsme.c)
+ 
+ SET(NON_PROD_NEONSME_MICROKERNEL_SRCS)
+diff --git a/src/configs/gemm-config.c b/src/configs/gemm-config.c
+index cc9a2c76ef..2487012f4d 100644
+--- a/src/configs/gemm-config.c
++++ b/src/configs/gemm-config.c
+@@ -2368,8 +2368,39 @@ static void init_qp8_f32_qb4w_gemm_config(void) {
+     const struct xnn_hardware_config* hardware_config =
+         xnn_init_hardware_config();
+     assert(hardware_config != NULL);
+-    if (XNN_ENABLE_ARM_I8MM && (hardware_config->arch_flags & xnn_arch_arm_neon_i8mm)) {
+-      #if XNN_ENABLE_ARM_I8MM
++   (void) hardware_config;  // May be unused.
++    if (XNN_ENABLE_ARM_SME2 && (hardware_config->arch_flags & xnn_arch_arm_sme2)) {
++      #if XNN_ENABLE_ARM_SME2
++        const size_t mr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr();
++        const size_t nr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr();
++        qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(1)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2);
++        qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(mr)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2);
++        qp8_f32_qb4w_gemm_config.init.f32_qb4w = xnn_init_f32_qb4w_minmax_scalar_params;
++        qp8_f32_qc4w_gemm_config.pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
++        qp8_f32_qb4w_gemm_config.packed_stride_weights_and_biases = xnn_packed_stride_kai_qb4_weights_and_biases;
++        qp8_f32_qb4w_gemm_config.mr = mr;
++        qp8_f32_qb4w_gemm_config.nr = nr;
++        qp8_f32_qb4w_gemm_config.log2_kr = 2;
++        qp8_f32_qb4w_gemm_config.planes = 2;
++        qp8_f32_qb4w_gemm_config.mr_packed = mr;
++      #endif // XNN_ENABLE_ARM_SME2
++    } else if (XNN_ENABLE_ARM_SME && (hardware_config->arch_flags & xnn_arch_arm_sme)) {
++      #if XNN_ENABLE_ARM_SME
++      const size_t mr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr();
++      const size_t nr = xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr();
++      qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(1)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme);
++      qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(mr)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme);
++      qp8_f32_qb4w_gemm_config.init.f32_qb4w = xnn_init_f32_qb4w_minmax_scalar_params;
++      qp8_f32_qc4w_gemm_config.pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
++      qp8_f32_qb4w_gemm_config.packed_stride_weights_and_biases = xnn_packed_stride_kai_qb4_weights_and_biases;
++      qp8_f32_qb4w_gemm_config.mr = mr;
++      qp8_f32_qb4w_gemm_config.nr = nr;
++      qp8_f32_qb4w_gemm_config.log2_kr = 2;
++      qp8_f32_qb4w_gemm_config.planes = 2;
++      qp8_f32_qb4w_gemm_config.mr_packed = mr;
++      #endif  // XNN_ENABLE_ARM_SME
++    } else if (XNN_ENABLE_ARM_I8MM && (hardware_config->arch_flags & xnn_arch_arm_neon_i8mm)) {
++      #if XNN_ENABLE_ARM_I8MM && XNN_ENABLE_ARM_DOTPROD
+         qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(1)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_1x4c16s2__aarch64_neondot);
+         qp8_f32_qb4w_gemm_config.minmax.qp8gemm_bl[XNN_MR_TO_INDEX(16)] = XNN_INIT_HMP_QP8GEMM_BL_UKERNEL(xnn_qp8_f32_qb4w_gemm_minmax_ukernel_16x4c16s2__neoni8mm_mstep4);
+         qp8_f32_qb4w_gemm_config.init.f32_qb4w = xnn_init_f32_qb4w_minmax_scalar_params;
+diff --git a/src/operators/fully-connected-nc.c b/src/operators/fully-connected-nc.c
+index 87c666cfdf..d22f4a48b1 100644
+--- a/src/operators/fully-connected-nc.c
++++ b/src/operators/fully-connected-nc.c
+@@ -978,8 +978,9 @@ enum xnn_status xnn_create_fully_connected_nc_qp8_f32_qb4w(
+     return xnn_status_invalid_parameter;
+   }
+ 
+-  const struct xnn_gemm_config* gemm_config =
++  struct xnn_gemm_config* gemm_config =
+       xnn_init_qp8_f32_qb4w_gemm_config();
++  gemm_config->pack_weights_and_biases = xnn_pack_kai_qb4_weights_and_biases_neon;
+   if (gemm_config == NULL) {
+     xnn_log_error(
+         "failed to create %s operator: unsupported hardware configuration",
+diff --git a/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme.c b/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme.c
+new file mode 100644
+index 0000000000..fa4e2d1bae
+--- /dev/null
++++ b/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme.c
+@@ -0,0 +1,41 @@
++// Copyright 2024 Google LLC
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++#include <stddef.h>
++
++#include "src/xnnpack/microparams.h"
++
++#if XNN_ENABLE_KLEIDIAI
++#include "kai/ukernels/matmul/matmul_clamp_f32_qai8dxp_qsi4c32p/kai_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme1_mopa.h"
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr() {
++  return kai_get_mr_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme1_mopa();
++}
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr() {
++  return kai_get_nr_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme1_mopa();
++}
++#endif  // XNN_ENABLE_KLEIDIAI
++
++// Wraps the
++// `kai_run_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa` GEMM
++// microkernel with a name that is compatible with our tooling.
++void xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme(
++    size_t m, size_t n, size_t k, const void* lhs_packed,
++    const void* rhs_packed, float* dst, size_t dst_stride_row,
++    size_t dst_stride_col,
++    const struct xnn_f32_qb4w_minmax_params* minmax_params) {
++#if XNN_ENABLE_KLEIDIAI
++  kai_run_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme1_mopa(
++      m, n, k, minmax_params->scalar.blocksize, lhs_packed, rhs_packed, dst, dst_stride_row,
++      /*dst_stride_col=*/sizeof(float), minmax_params->scalar.min,
++      minmax_params->scalar.max);
++#else
++  assert(
++      "Calling KleidiAI microkernel wrapper, but XNNPACK was compiled without "
++      "`XNN_ENABLE_KLEIDIAI`." &&
++      0);
++#endif  // XNN_ENABLE_KLEIDIAI
++}
+diff --git a/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme2.c b/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme2.c
+new file mode 100644
+index 0000000000..fdd5e88ec0
+--- /dev/null
++++ b/src/qp8-f32-qb4w-gemm/qp8-f32-qb4w-gemm-minmax-neonsme2.c
+@@ -0,0 +1,41 @@
++// Copyright 2024 Google LLC
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++#include <stddef.h>
++
++#include "src/xnnpack/microparams.h"
++
++#if XNN_ENABLE_KLEIDIAI
++#include "kai/ukernels/matmul/matmul_clamp_f32_qai8dxp_qsi4c32p/kai_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme2_mopa.h"
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2_get_mr() {
++  return kai_get_mr_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme2_mopa();
++}
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2_get_nr() {
++  return kai_get_nr_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme2_mopa();
++}
++#endif  // XNN_ENABLE_KLEIDIAI
++
++// Wraps the
++// `kai_run_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa` GEMM
++// microkernel with a name that is compatible with our tooling.
++void xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2(
++    size_t m, size_t n, size_t k, const void* lhs_packed,
++    const void* rhs_packed, float* dst, size_t dst_stride_row,
++    size_t dst_stride_col,
++    const struct xnn_f32_qb4w_minmax_params* minmax_params) {
++#if XNN_ENABLE_KLEIDIAI
++  kai_run_matmul_clamp_f32_qai8dxp1vlx4_qsi4c32p4vlx4_1vlx4vl_sme2_mopa(
++      m, n, k, minmax_params->scalar.blocksize, lhs_packed, rhs_packed, dst, dst_stride_row,
++      /*dst_stride_col=*/sizeof(float), minmax_params->scalar.min,
++      minmax_params->scalar.max);
++#else
++  assert(
++      "Calling KleidiAI microkernel wrapper, but XNNPACK was compiled without "
++      "`XNN_ENABLE_KLEIDIAI`." &&
++      0);
++#endif  // XNN_ENABLE_KLEIDIAI
++}
+diff --git a/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme.c b/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme.c
+new file mode 100644
+index 0000000000..249d99c53e
+--- /dev/null
++++ b/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme.c
+@@ -0,0 +1,38 @@
++// Copyright 2024 Google LLC
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++#include <stddef.h>
++#include "src/xnnpack/microparams.h"
++
++#if XNN_ENABLE_KLEIDIAI
++#include "kai/ukernels/matmul/matmul_clamp_f32_qai8dxp_qsi4c32p/kai_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme1_dot.h"
++
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme_get_mr() {
++  return kai_get_mr_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme1_dot();
++}
++
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme_get_nr() {
++  return kai_get_nr_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme1_dot();
++}
++#endif  // XNN_ENABLE_KLEIDIAI
++
++// Wraps the `kai_run_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa`
++// GEMM microkernel with a name that is compatible with our tooling.
++void xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme(
++    size_t m, size_t n, size_t k, const void* lhs_packed,
++    const void* rhs_packed, float* dst, size_t dst_stride_row,
++    size_t dst_stride_col,
++    struct xnn_f32_qb4w_minmax_params* minmax_params) {
++#if XNN_ENABLE_KLEIDIAI
++    kai_run_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme1_dot(
++      m, n, k, minmax_params->scalar.blocksize, lhs_packed, rhs_packed, dst, dst_stride_row, /*dst_stride_col=*/sizeof(float),
++      minmax_params->scalar.min, minmax_params->scalar.max);
++#else
++  assert(
++      "Calling KleidiAI microkernel wrapper, but XNNPACK was compiled without "
++      "`XNN_ENABLE_KLEIDIAI`." &&
++      0);
++#endif  // XNN_ENABLE_KLEIDIAI
++}
+diff --git a/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme2.c b/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme2.c
+new file mode 100644
+index 0000000000..2c0f6d963c
+--- /dev/null
++++ b/src/qp8-f32-qb4w-gemm/qp8-f32-qbw-gemv-minmax-neonsme2.c
+@@ -0,0 +1,38 @@
++// Copyright 2024 Google LLC
++//
++// This source code is licensed under the BSD-style license found in the
++// LICENSE file in the root directory of this source tree.
++
++#include <stddef.h>
++#include "src/xnnpack/microparams.h"
++
++#if XNN_ENABLE_KLEIDIAI
++#include "kai/ukernels/matmul/matmul_clamp_f32_qai8dxp_qsi4c32p/kai_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme2_dot.h"
++
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2_get_mr() {
++  return kai_get_mr_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme2_dot();
++}
++
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2_get_nr() {
++  return kai_get_nr_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme2_dot();
++}
++#endif  // XNN_ENABLE_KLEIDIAI
++
++// Wraps the `kai_run_matmul_clamp_f32_qai8dxp1vlx8_qsi4cxp4vlx8_1vlx4vl_sme2_mopa`
++// GEMM microkernel with a name that is compatible with our tooling.
++void xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2(
++    size_t m, size_t n, size_t k, const void* lhs_packed,
++    const void* rhs_packed, float* dst, size_t dst_stride_row,
++    size_t dst_stride_col,
++    struct xnn_f32_qb4w_minmax_params* minmax_params) {
++#if XNN_ENABLE_KLEIDIAI
++    kai_run_matmul_clamp_f32_qai8dxp1x4_qsi4c32p4vlx4_1x4vl_sme2_dot(
++      m, n, k, minmax_params->scalar.blocksize, lhs_packed, rhs_packed, dst, dst_stride_row, /*dst_stride_col=*/sizeof(float),
++      minmax_params->scalar.min, minmax_params->scalar.max);
++#else
++  assert(
++      "Calling KleidiAI microkernel wrapper, but XNNPACK was compiled without "
++      "`XNN_ENABLE_KLEIDIAI`." &&
++      0);
++#endif  // XNN_ENABLE_KLEIDIAI
++}
+diff --git a/src/reference/packing.cc b/src/reference/packing.cc
+index 09a831795c..64c8af5be7 100644
+--- a/src/reference/packing.cc
++++ b/src/reference/packing.cc
+@@ -35,6 +35,8 @@
+ #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0.h"
+ #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4cxp_qs4cxs1s0.h"
+ #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4cxps1s0_qsu4cxs1s0_neon.h"
++#include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon.h"
++#include "kai/ukernels/matmul/pack/kai_rhs_pack_kxn_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon.h"
+ #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_qsi8cxp_qsi8cx_neon.h"
+ #include "kai/ukernels/matmul/pack/kai_rhs_pack_nxk_x16p2vlx2b_x16_x16_sme.h"
+ #include "src/xnnpack/allocator.h"
+@@ -2509,6 +2511,77 @@ void xnn_pack_kai_qb4_weights_and_biases(
+   }
+ }
+ 
++void xnn_pack_kai_qb4_weights_and_biases_neon(
++    uint32_t flags, const struct xnn_gemm_config* gemm_config,
++    size_t input_channels, size_t output_channels, size_t groups,
++    size_t block_size, size_t k_stride, const void* accumulator_init,
++    const void* weights, xnn_init_scale_params_fn init_extra_data0_fn,
++    const void* extra_data0, size_t extra_data0_element_size,
++    xnn_init_scale_params_fn init_extra_data1_fn, const void* extra_data1,
++    size_t extra_data1_element_size, void* packed_weights_ptr,
++    const void* params) {
++  const uint32_t nr = gemm_config->nr;
++  const uint32_t kr = UINT32_C(1) << gemm_config->log2_kr;
++  const uint32_t sr = UINT32_C(1) << gemm_config->log2_sr;
++  const uint32_t planes = gemm_config->planes;
++  const struct xnn_qs8_qc4w_packing_params* xnn_params =
++      reinterpret_cast<const struct xnn_qs8_qc4w_packing_params*>(params);
++
++  size_t rhs_stride = (k_stride + 1) / 2;
++  size_t blocks_per_row = (input_channels + block_size - 1) / block_size;
++
++  if (flags & XNN_FLAG_TRANSPOSE_WEIGHTS) {
++    struct kai_rhs_pack_kxn_qsi4c32p_qsu4c32s1s0_params kai_params;
++    kai_params.lhs_zero_point = xnn_params->input_zero_point;
++    kai_params.rhs_zero_point = xnn_params->kernel_zero_point;
++    kai_params.scale_dt = kai_datatype::kai_dt_bf16;
++    kai_run_rhs_pack_kxn_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon(
++        groups, output_channels, input_channels, nr, kr, sr,
++        /*bl=*/block_size,
++        /*rhs=*/reinterpret_cast<const uint8_t*>(weights), rhs_stride,
++        /*bias=*/reinterpret_cast<const float*>(extra_data0),
++        /*scale=*/reinterpret_cast<const uint16_t*>(extra_data1),
++        /*scale_stride=*/blocks_per_row * sizeof(uint16_t),
++        /*rhs_packed*/ packed_weights_ptr,
++        /*extra_bytes=*/0, &kai_params);
++  } else {
++    // Repack the packing params.
++    struct kai_rhs_pack_nxk_qsi4c32p_qsu4c32s1s0_params kai_params;
++    kai_params.lhs_zero_point = xnn_params->input_zero_point;
++    kai_params.rhs_zero_point = xnn_params->kernel_zero_point;
++    kai_params.scale_dt = kai_datatype::kai_dt_bf16;
++    kai_run_rhs_pack_nxk_qsi4c32ps1s0nrx4_qsu4c32s1s0_neon(
++        groups, output_channels, input_channels, nr, kr, sr,
++        /*bl=*/block_size,
++        /*rhs=*/reinterpret_cast<const uint8_t*>(weights), rhs_stride,
++        /*bias=*/reinterpret_cast<const float*>(extra_data0),
++        /*scale=*/reinterpret_cast<const uint16_t*>(extra_data1),
++        /*scale_stride=*/blocks_per_row * sizeof(uint16_t),
++        /*rhs_packed*/ packed_weights_ptr,
++        /*extra_bytes=*/0, &kai_params);
++  }
++
++  // init bias
++  size_t packed_k_stride = round_up_po2(input_channels, kr * sr);
++  if (1 < planes) {
++    input_channels = round_up_po2(input_channels, planes);
++    packed_k_stride = round_up_po2(input_channels, kr * sr * planes);
++    packed_k_stride = round_up_po2(packed_k_stride, 2) >> 1;
++  }
++  const size_t weights_stride = xnn_packed_stride_kai_qb4_weights_and_biases(
++      gemm_config, input_channels, block_size, packed_k_stride, 0);
++  if (accumulator_init != NULL) {
++    void* weights_start =
++        (void*)((uintptr_t)packed_weights_ptr +
++                nr * (sizeof(float) + (block_size * sizeof(int8_t) / 2)));
++    weights_start = (void*)((uintptr_t)packed_weights_ptr +
++                            nr * (weights_stride - sizeof(float)));
++    xnn_init_qs8_qc8w_scale_fp32_params(
++        output_channels, nr, nr * weights_stride,
++        (const float*)accumulator_init, weights_start);
++  }
++}
++
+ void xnn_pack_kai_qs8_conv_goki_w_sme2(
+     size_t g, size_t nc, size_t ks, size_t kc, size_t nr, size_t kr, size_t sr,
+     const int8_t* k, const int32_t* b, const float* scale, void* packed_weights,
+diff --git a/src/xnnpack/gemm.h b/src/xnnpack/gemm.h
+index b124404f6d..38f66f3da3 100644
+--- a/src/xnnpack/gemm.h
++++ b/src/xnnpack/gemm.h
+@@ -4027,6 +4027,25 @@ DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
+     xnn_qp8_f32_qb4w_gemm_minmax_ukernel_8x4c16s2__neoni8mm_mstep2)
+ DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
+     xnn_qp8_f32_qb4w_gemm_minmax_ukernel_16x4c16s2__neoni8mm_mstep4)
++DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
++    xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme)
++DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
++    xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme)
++DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
++    xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2)
++DECLARE_QP8_F32_QB4W_GEMM_MINMAX_UKERNEL_FUNCTION(
++    xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2)
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_mr();
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme_get_nr();
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme_get_mr();
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme_get_nr();
++
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2_get_mr();
++size_t xnn_qp8_f32_qb4w_gemm_minmax_ukernel_neonsme2_get_nr();
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2_get_mr();
++size_t xnn_qp8_f32_qb4w_gemv_minmax_ukernel_neonsme2_get_nr();
++
+ 
+ #define DECLARE_QD8_F16_QC8W_GEMM_MINMAX_UKERNEL_FUNCTION(fn_name)       \
+   XNN_INTERNAL void fn_name(                                             \
+diff --git a/src/xnnpack/pack.h b/src/xnnpack/pack.h
+index eac003545d..579d33b306 100644
+--- a/src/xnnpack/pack.h
++++ b/src/xnnpack/pack.h
+@@ -498,6 +498,25 @@ XNN_INTERNAL void xnn_pack_kai_qb4_weights_and_biases(
+     void* packed_weights_ptr,                      //
+     const void* params);
+ 
++XNN_INTERNAL void xnn_pack_kai_qb4_weights_and_biases_neon(
++    uint32_t flags,                                //
++    const struct xnn_gemm_config* gemm_config,     //
++    size_t input_channels,                         //
++    size_t output_channels,                        //
++    size_t groups,                                 //
++    size_t block_size,                             //
++    size_t k_stride,                               //
++    const void* accumulator_init,                  //
++    const void* weights,                           //
++    xnn_init_scale_params_fn init_extra_data0_fn,  //
++    const void* extra_data0,                       //
++    size_t extra_data0_element_size,               //
++    xnn_init_scale_params_fn init_extra_data1_fn,  //
++    const void* extra_data1,                       //
++    size_t extra_data1_element_size,               //
++    void* packed_weights_ptr,                      //
++    const void* params);
++
+ XNN_INTERNAL size_t xnn_packed_stride_kai_qb4_weights_and_biases(
+     const struct xnn_gemm_config* gemm_config,  //
+     size_t k,                                   //
